@@ -185,7 +185,10 @@ considerada e o motivo.
   `--no-write` desliga a gravação. Alternativa: gravar sempre. Motivo: um teste que não reproduz o
   bug não deveria aparecer no projeto. O código dele continua no relatório.
 - **O `<id>` padrão vem do nome do arquivo do relato**, sem acentos e em snake_case
-  (`frete gratis.md` vira `frete_gratis`). `--test-id` escolhe outro.
+  (`frete gratis.md` vira `frete_gratis`). Quando o arquivo se chama só `issue.md`, como nos casos
+  de avaliação, o id vem da pasta (`evals/cases/centavo_a_mais/issue.md` vira `centavo_a_mais`).
+  `--test-id` escolhe outro.
+- **O custo estimado é arredondado em seis casas decimais** (um milionésimo de dólar).
 - **O `.env` é lido da pasta atual.** Variáveis já definidas no ambiente têm prioridade sobre o
   `.env`, e `--provider` e `--model` têm prioridade sobre os dois.
 

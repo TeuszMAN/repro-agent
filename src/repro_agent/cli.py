@@ -55,7 +55,7 @@ def run(
     """Reproduces the bug described in the issue file with a pytest test for the project."""
     configure_logging()
     settings = settings_or_exit(provider, model)
-    test_id = test_id or slugify(issue.stem)
+    test_id = test_id or default_test_id(issue)
     config = AgentConfig(max_attempts=max_attempts, python_executable=python or sys.executable)
 
     try:
@@ -145,6 +145,12 @@ def configure_logging() -> None:
     )
     # Keep the output about the agent; HTTP libraries are noisy at INFO.
     logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+def default_test_id(issue: Path) -> str:
+    """The issue file name, or its folder name when the file is just "issue.md"."""
+    name = issue.parent.resolve().name if issue.stem.lower() == "issue" else issue.stem
+    return slugify(name)
 
 
 def slugify(text: str) -> str:

@@ -233,6 +233,7 @@ def test_load_settings_for_gemini() -> None:
     )
     assert settings.estimate_cost(TokenUsage(1_000_000, 500_000)) == pytest.approx(1.5)
     assert isinstance(create_model(settings), GeminiModel)
+    assert settings.estimate_cost(TokenUsage(7000, 700)) == 0.0049  # rounded, no float noise
 
 
 def test_command_line_overrides_environment() -> None:

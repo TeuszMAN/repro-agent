@@ -300,10 +300,11 @@ class Settings:
     def estimate_cost(self, usage: TokenUsage) -> float | None:
         if self.price_input_per_mtok is None or self.price_output_per_mtok is None:
             return None
-        return (
+        cost = (
             usage.input_tokens * self.price_input_per_mtok
             + usage.output_tokens * self.price_output_per_mtok
         ) / 1_000_000
+        return round(cost, 6)  # a millionth of a dollar is enough, and hides float noise
 
 
 def load_settings(

@@ -144,6 +144,12 @@ def test_run_reads_the_env_file(
     assert [s.provider for s in seen] == ["deepseek"]
 
 
+def test_default_test_id(tmp_path: Path) -> None:
+    assert cli.default_test_id(tmp_path / "frete gratis.md") == "frete_gratis"
+    case = tmp_path / "centavo_a_mais"
+    assert cli.default_test_id(case / "issue.md") == "centavo_a_mais"
+
+
 @pytest.mark.parametrize(
     ("text", "slug"),
     [("frete gratis", "frete_gratis"), ("Cupom acima de 100%!", "cupom_acima_de_100"), ("ç", "c")],
