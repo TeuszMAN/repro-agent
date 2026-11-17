@@ -102,3 +102,28 @@ considerada e o motivo.
   `evals/cases`. Motivo: o agente nunca deve ter acesso a eles.
 - **Cada bug escapa dos testes do próprio `pedido`.** Alternativa: deixar os testes do projeto
   pegarem alguns bugs. Motivo: bug que os testes pegam não precisaria de relato.
+
+### Camada de LLM (`llm.py`)
+
+- **HTTP direto com httpx, sem SDK dos provedores.** Alternativa: os SDKs oficiais ou os modelos
+  de chat do LangChain. Motivo: as duas chamadas cabem em poucas linhas, ficam visíveis no código
+  e são testadas sem rede com `httpx.MockTransport`.
+- **Interface mínima: `complete(node, system, messages, json_mode)`**, que devolve o texto e os
+  tokens. Alternativa: chamada de ferramentas nativa de cada provedor. Motivo: Gemini e DeepSeek
+  têm formatos diferentes para ferramentas, enquanto modo JSON e texto puro funcionam igual nos
+  dois. O loop ReAct do locate usa JSON.
+- **O parâmetro `node` identifica a chamada.** Os provedores reais só o usam no log. O modelo falso
+  usa para escolher a próxima resposta do roteiro de cada nó, o que deixa os testes legíveis.
+- **Saída estruturada com Pydantic e uma segunda chance.** Se o JSON não valida, o erro volta para
+  o modelo uma vez. Alternativa: falhar de primeira. Motivo: erro de formato é comum e barato de
+  corrigir.
+- **Novas tentativas só para 429, erros 5xx e falhas de rede**, até 3 tentativas no total,
+  respeitando o cabeçalho `Retry-After` (limitado a 60 s). Alternativa: sem novas tentativas.
+  Motivo: o plano gratuito do Gemini devolve 429 com frequência.
+- **Tokens de raciocínio do Gemini contam como saída** (`thoughtsTokenCount`), porque são cobrados
+  como saída.
+- **Preços por variável de ambiente** (`REPRO_PRICE_INPUT_PER_MTOK` e
+  `REPRO_PRICE_OUTPUT_PER_MTOK`, em dólares por milhão de tokens). Sem elas, o custo sai como
+  `null`. Alternativa: tabela de preços no código. Motivo: preços mudam e o modelo não é fixo.
+- **O modelo falso fica no pacote** (`fake_llm.py`), não em `tests/`. Motivo: é a referência mais
+  simples da interface `ChatModel` e pode ser usado em demonstrações sem chave.

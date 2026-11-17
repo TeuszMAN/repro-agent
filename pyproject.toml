@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "AI agent that turns a bug report into a pytest test that reproduces the bug."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic>=2.14.3",
+]
 
 [dependency-groups]
 dev = [
