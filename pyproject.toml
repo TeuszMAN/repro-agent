@@ -1,0 +1,38 @@
+[project]
+name = "repro-agent"
+version = "0.1.0"
+description = "AI agent that turns a bug report into a pytest test that reproduces the bug."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["uv_build>=0.8,<0.12"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F: pycodestyle and pyflakes errors, I: import order,
+# B: common bugs (bugbear), UP: modern Python syntax.
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+# Basic mode: mypy defaults, without --strict.
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+# Only our own tests. The target project in evals/fixtures/pedido has its own
+# tests, which are run by tests/test_eval_cases.py in a temporary copy.
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
