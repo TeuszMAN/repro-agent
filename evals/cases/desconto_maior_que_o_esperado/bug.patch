@@ -1,0 +1,14 @@
+diff --git a/pedido/order.py b/pedido/order.py
+index e48ed62..c2903c4 100644
+--- a/pedido/order.py
++++ b/pedido/order.py
+@@ -50,7 +50,7 @@ def calculate_order(items: list[Item], coupon: Coupon | None = None) -> OrderSum
+         return OrderSummary(subtotal=ZERO, discount=ZERO, delivery_fee=ZERO, total=ZERO)
+ 
+     subtotal = sum((item.total for item in items), ZERO)
+-    discount = discount_for(coupon, subtotal)
+     fee = delivery_fee(subtotal)
+-    total = subtotal - discount + fee
++    discount = discount_for(coupon, subtotal + fee)
++    total = subtotal + fee - discount
+     return OrderSummary(subtotal=subtotal, discount=discount, delivery_fee=fee, total=total)

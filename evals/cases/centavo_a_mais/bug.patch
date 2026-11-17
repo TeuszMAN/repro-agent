@@ -1,0 +1,13 @@
+diff --git a/pedido/coupon.py b/pedido/coupon.py
+index 2341a5a..c306454 100644
+--- a/pedido/coupon.py
++++ b/pedido/coupon.py
+@@ -30,7 +30,7 @@ def discount_for(coupon: Coupon | None, amount: Decimal) -> Decimal:
+     if coupon is None:
+         return ZERO
+     if coupon.kind is CouponKind.PERCENTAGE:
+-        discount = round_cents(amount * coupon.value / 100)
++        discount = round_cents(Decimal(float(amount) * float(coupon.value) / 100))
+     else:
+         discount = coupon.value
+     return min(discount, amount)

@@ -1,0 +1,10 @@
+[project]
+name = "pedido"
+version = "1.0.0"
+description = "Delivery order calculation: subtotal, coupons, delivery fee and rounding."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+# Lets the tests import the `pedido` package without installing it.
+pythonpath = ["."]
+testpaths = ["tests"]

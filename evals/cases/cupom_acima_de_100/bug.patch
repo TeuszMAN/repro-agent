@@ -1,0 +1,13 @@
+diff --git a/pedido/coupon.py b/pedido/coupon.py
+index 2341a5a..2c778bf 100644
+--- a/pedido/coupon.py
++++ b/pedido/coupon.py
+@@ -21,8 +21,6 @@ class Coupon:
+     def __post_init__(self) -> None:
+         if self.value <= 0:
+             raise ValueError("coupon value must be positive")
+-        if self.kind is CouponKind.PERCENTAGE and self.value > 100:
+-            raise ValueError("percentage coupon cannot be above 100%")
+ 
+ 
+ def discount_for(coupon: Coupon | None, amount: Decimal) -> Decimal:

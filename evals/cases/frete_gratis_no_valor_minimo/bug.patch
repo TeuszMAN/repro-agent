@@ -1,0 +1,12 @@
+diff --git a/pedido/delivery.py b/pedido/delivery.py
+index bd3b294..6629e40 100644
+--- a/pedido/delivery.py
++++ b/pedido/delivery.py
+@@ -10,6 +10,6 @@ FREE_DELIVERY_MINIMUM = Decimal("100.00")
+ 
+ def delivery_fee(subtotal: Decimal) -> Decimal:
+     """Delivery is free when the items subtotal reaches FREE_DELIVERY_MINIMUM (inclusive)."""
+-    if subtotal >= FREE_DELIVERY_MINIMUM:
++    if subtotal > FREE_DELIVERY_MINIMUM:
+         return ZERO
+     return DELIVERY_FEE

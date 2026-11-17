@@ -1,0 +1,14 @@
+diff --git a/pedido/order.py b/pedido/order.py
+index e48ed62..5b9966e 100644
+--- a/pedido/order.py
++++ b/pedido/order.py
+@@ -46,9 +46,6 @@ def calculate_order(items: list[Item], coupon: Coupon | None = None) -> OrderSum
+     Free delivery is decided by the subtotal before the discount.
+     An empty cart costs nothing: no items, no delivery.
+     """
+-    if not items:
+-        return OrderSummary(subtotal=ZERO, discount=ZERO, delivery_fee=ZERO, total=ZERO)
+-
+     subtotal = sum((item.total for item in items), ZERO)
+     discount = discount_for(coupon, subtotal)
+     fee = delivery_fee(subtotal)
