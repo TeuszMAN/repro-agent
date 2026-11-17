@@ -4,90 +4,30 @@ The fake model replaces only the LLM. Everything else is real: the tools read th
 project, pytest runs in a temporary copy and the judge reads the real output.
 """
 
-import json
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from frete_scenario import (
+    ANALYSIS,
+    CASE_ID,
+    GOOD_TEST,
+    ISSUE,
+    LOCATE_STEPS,
+    PASSING_TEST,
+    REFLECTION,
+    WRONG_IMPORT_TEST,
+)
 
 from repro_agent.fake_llm import FakeModel
 from repro_agent.graph import reproduce
 from repro_agent.judge import Outcome
-from repro_agent.state import AgentConfig, IssueAnalysis
-
-ISSUE = """\
-# Frete grátis não vale para pedido de exatamente R$ 100,00
-
-Fiz um pedido de 4 hambúrgueres de R$ 25,00 e foi cobrada a taxa de entrega de R$ 7,90.
-"""
-
-ANALYSIS = IssueAnalysis(
-    expected_behavior="Free delivery when the subtotal is exactly 100.00",
-    observed_behavior="A delivery fee of 7.90 is charged",
-    trigger="Four items of 25.00, subtotal exactly 100.00",
-    suspect_modules=["delivery"],
-).model_dump_json()
-
-LOCATE_STEPS = [
-    json.dumps({"thought": "see the tests", "tool": "read_file", "path": "tests/test_order.py"}),
-    json.dumps({"thought": "fee rule", "tool": "read_file", "path": "pedido/delivery.py"}),
-    json.dumps(
-        {
-            "tool": "finish",
-            "summary": "delivery_fee in pedido/delivery.py uses > instead of >=. "
-            "Tests import with `from pedido import Item, calculate_order`.",
-        }
-    ),
-]
-
-GOOD_TEST = """\
-```python
-from decimal import Decimal
-
-from pedido import Item, calculate_order
-
-
-def test_free_delivery_at_exactly_the_minimum():
-    \"\"\"A subtotal equal to the minimum gets free delivery.\"\"\"
-    order = calculate_order([Item(name="burger", unit_price=Decimal("25.00"), quantity=4)])
-    assert order.delivery_fee == Decimal("0.00")
-```
-"""
-
-WRONG_IMPORT_TEST = """\
-```python
-from decimal import Decimal
-
-from pedido.frete import calcular_frete
-
-
-def test_free_delivery_at_exactly_the_minimum():
-    assert calcular_frete(Decimal("100.00")) == Decimal("0.00")
-```
-"""
-
-PASSING_TEST = """\
-```python
-from decimal import Decimal
-
-from pedido import Item, calculate_order
-
-
-def test_free_delivery_above_the_minimum():
-    order = calculate_order([Item(name="burger", unit_price=Decimal("25.00"), quantity=5)])
-    assert order.delivery_fee == Decimal("0.00")
-```
-"""
-
-REFLECTION = (
-    "The module pedido.frete does not exist. Import Item and calculate_order from pedido, "
-    "as tests/test_order.py does."
-)
+from repro_agent.state import AgentConfig
 
 
 @pytest.fixture
 def buggy_project(buggy_pedido: Callable[[str], Path]) -> Path:
-    return buggy_pedido("frete_gratis_no_valor_minimo")
+    return buggy_pedido(CASE_ID)
 
 
 def test_reproduces_on_the_first_attempt(buggy_project: Path) -> None:

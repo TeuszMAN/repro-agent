@@ -8,7 +8,12 @@ dependencies = [
     "httpx>=0.28.1",
     "langgraph>=1.2.22",
     "pydantic>=2.14.3",
+    "python-dotenv>=1.2.4",
+    "typer>=0.29.1",
 ]
+
+[project.scripts]
+repro = "repro_agent.cli:app"
 
 [dependency-groups]
 dev = [

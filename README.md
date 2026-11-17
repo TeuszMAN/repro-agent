@@ -172,3 +172,19 @@ considerada e o motivo.
 - **"Máximo de 3 tentativas no total" conta as execuções de write_test.** Depois da terceira não
   há reflexão, porque ela não seria usada.
 - **O grafo nunca grava no projeto alvo.** Quem decide gravar o teste final é a CLI.
+
+### CLI e relatório (`cli.py` e `report.py`)
+
+- **O relatório JSON vai para a saída padrão**, e os logs vão para a saída de erro. `--report`
+  também grava o JSON num arquivo. Alternativa: só arquivo. Motivo: dá para encadear com outras
+  ferramentas (`repro run ... | jq .status`).
+- **Códigos de saída:** 0 reproduziu, 1 não reproduziu, 2 configuração inválida, 3 erro durante a
+  execução (por exemplo, o provedor fora do ar). No caso 3, o relatório sai com `status: "error"` e
+  sem a contagem de tokens gastos até a falha.
+- **O teste só é gravado no projeto quando reproduz o bug**, em `tests/test_repro_<id>.py`.
+  `--no-write` desliga a gravação. Alternativa: gravar sempre. Motivo: um teste que não reproduz o
+  bug não deveria aparecer no projeto. O código dele continua no relatório.
+- **O `<id>` padrão vem do nome do arquivo do relato**, sem acentos e em snake_case
+  (`frete gratis.md` vira `frete_gratis`). `--test-id` escolhe outro.
+- **O `.env` é lido da pasta atual.** Variáveis já definidas no ambiente têm prioridade sobre o
+  `.env`, e `--provider` e `--model` têm prioridade sobre os dois.

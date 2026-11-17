@@ -1,9 +1,12 @@
 """judge node: applies the deterministic judge to the last run and records the attempt."""
 
+import logging
 from typing import Any
 
 from repro_agent.judge import judge
 from repro_agent.state import Attempt, ReproState
+
+logger = logging.getLogger(__name__)
 
 # The attempt keeps only the end of the pytest output, where the failures are summarized.
 MAX_OUTPUT_CHARS = 8_000
@@ -22,6 +25,7 @@ def judge_node(state: ReproState) -> dict[str, Any]:
         outcome=verdict.outcome,
         detail=verdict.detail,
     )
+    logger.info("attempt %d: %s (%s)", attempt.number, attempt.outcome.value, attempt.detail)
     return {"attempts": state["attempts"] + [attempt]}
 
 
