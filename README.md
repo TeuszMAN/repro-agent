@@ -160,3 +160,15 @@ considerada e o motivo.
   inteira, e o reflect recebe o final, onde está o resumo das falhas.
 - **O nome do arquivo de teste vem de `repro_test_path`**, e não `test_file_path`. Motivo: o pytest
   coleta como teste qualquer função importada que comece com `test_`.
+
+### Grafo (`graph.py`)
+
+- **Estado como `TypedDict`, e cada nó devolve só as chaves que muda.** Listas (tentativas,
+  reflexões) são devolvidas inteiras, já com o item novo. Alternativa: reducers do LangGraph,
+  que juntam listas automaticamente. Motivo: o que cada nó escreve fica explícito no próprio nó.
+- **Dependências entram por lambdas** (`lambda state: understand(state, llm)`). Alternativa:
+  passar o modelo pelo `config` do LangGraph. Motivo: os nós continuam funções comuns, testáveis
+  sem o grafo.
+- **"Máximo de 3 tentativas no total" conta as execuções de write_test.** Depois da terceira não
+  há reflexão, porque ela não seria usada.
+- **O grafo nunca grava no projeto alvo.** Quem decide gravar o teste final é a CLI.
