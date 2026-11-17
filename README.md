@@ -188,3 +188,21 @@ considerada e o motivo.
   (`frete gratis.md` vira `frete_gratis`). `--test-id` escolhe outro.
 - **O `.env` é lido da pasta atual.** Variáveis já definidas no ambiente têm prioridade sobre o
   `.env`, e `--provider` e `--model` têm prioridade sobre os dois.
+
+### Avaliação (`evaluation.py` e `evals/run.py`)
+
+- **A lógica fica em `src/repro_agent/evaluation.py`**, e `evals/run.py` só chama `repro eval`.
+  Motivo: a CLI e o script compartilham o mesmo código, e o pacote instalado tem acesso a ele.
+- **O fail-to-pass roda o teste de novo nas duas versões**, cada uma numa cópia nova, mesmo que o
+  agente já tenha rodado na versão com bug. Motivo: a checagem não depende de nada que o agente
+  disse.
+- **Status de cada caso:** `valid` (falha na versão com bug pela razão certa e passa na correta),
+  `not_reproduced` (o agente esgotou as tentativas), `not_fail_to_pass` (falhou na versão com bug,
+  mas também falha na correta) e `error` (falha do provedor). Um caso com erro não interrompe os
+  outros.
+- **A média de tentativas considera só os casos em que o agente tentou ao menos uma vez.**
+- **O custo total sai como "não estimado" se algum caso não tiver custo**, para não mostrar um
+  total parcial como se fosse completo.
+- **Os arquivos de resultado levam data e hora** (`2026-11-17_043000_<modelo>.json` e `.md`).
+  Alternativa: só a data. Motivo: duas rodadas no mesmo dia não se sobrescrevem.
+- **`evals/results/` é versionado**, porque é a evidência da tabela do README.

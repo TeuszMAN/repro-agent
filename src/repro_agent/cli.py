@@ -1,4 +1,4 @@
-"""Command line: `repro run` reproduces one bug report.
+"""Command line: `repro run` reproduces one bug report, `repro eval` runs the evaluation suite.
 
 Exit codes: 0 reproduced, 1 not reproduced, 2 bad configuration, 3 error during the run.
 The JSON report goes to stdout (and to --report, if given). Logs go to stderr.
@@ -15,6 +15,7 @@ from typing import Annotated
 import typer
 from dotenv import load_dotenv
 
+from repro_agent.evaluation import DEFAULT_EVALS_DIR, run_eval, save_results
 from repro_agent.graph import reproduce
 from repro_agent.llm import ConfigError, LLMError, Settings, create_model, load_settings
 from repro_agent.report import RunReport, build_report
@@ -86,6 +87,37 @@ def run(
     run_report = build_report(result, settings.provider, settings.model, test_id, cost, test_file)
     emit(run_report, report)
     raise typer.Exit(0 if result.reproduced else 1)
+
+
+@app.command("eval")
+def evaluate(
+    model: Annotated[str | None, typer.Option(help="Overrides REPRO_MODEL.")] = None,
+    provider: Annotated[str | None, typer.Option(help="Overrides REPRO_PROVIDER.")] = None,
+    cases: Annotated[
+        str | None, typer.Option(help="Comma separated case ids. Default: all cases.")
+    ] = None,
+    evals_dir: Annotated[
+        Path, typer.Option(help="Folder with fixtures/ and cases/.", exists=True, file_okay=False)
+    ] = DEFAULT_EVALS_DIR,
+    results_dir: Annotated[
+        Path | None, typer.Option(help="Where to save results. Default: <evals-dir>/results.")
+    ] = None,
+) -> None:
+    """Runs the agent on the evaluation cases and checks fail-to-pass for each one."""
+    configure_logging()
+    settings = settings_or_exit(provider, model)
+    case_ids = [case.strip() for case in cases.split(",") if case.strip()] if cases else None
+    try:
+        eval_report = run_eval(
+            create_model(settings), settings.estimate_cost, case_ids, evals_dir=evals_dir
+        )
+    except ValueError as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(2) from error
+
+    json_path, markdown_path = save_results(eval_report, results_dir or evals_dir / "results")
+    typer.echo(markdown_path.read_text(encoding="utf-8"))
+    typer.echo(f"Results saved to {json_path} and {markdown_path}", err=True)
 
 
 def settings_or_exit(provider: str | None, model: str | None) -> Settings:

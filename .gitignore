@@ -14,5 +14,3 @@ build/
 # Secrets: API keys live only in .env (see .env.example)
 .env
 
-# Evaluation results are generated locally
-evals/results/
