@@ -127,3 +127,36 @@ considerada e o motivo.
   `null`. Alternativa: tabela de preços no código. Motivo: preços mudam e o modelo não é fixo.
 - **O modelo falso fica no pacote** (`fake_llm.py`), não em `tests/`. Motivo: é a referência mais
   simples da interface `ChatModel` e pode ser usado em demonstrações sem chave.
+
+### Nós do agente (`nodes/` e `prompts/`)
+
+- **Prompts em inglês, em arquivos `.md` separados** (`<nó>.system.md` com as instruções fixas e
+  `<nó>.user.md` com o modelo da mensagem). Os relatos continuam em português e são passados como
+  vieram. Alternativa: prompts em português ou embutidos no código. Motivo: o resto do código é em
+  inglês, e arquivo separado deixa o prompt fácil de ler e de comparar no diff.
+- **Modelos de texto com `string.Template`** (`$issue`). Alternativa: `str.format` ou Jinja.
+  Motivo: os prompts têm chaves de JSON, que no `str.format` precisariam ser escapadas, e Jinja
+  seria mais uma dependência.
+- **O loop ReAct do locate fica dentro de um único nó**, e não como arestas do grafo. Motivo: o
+  grafo fica com o desenho da seção 4 da SPEC, e o loop é um `for` fácil de testar.
+- **Cada passo do locate é um objeto JSON** com `tool`, `path`, `query` e `summary`. Erros das
+  ferramentas viram uma observação que começa com `Error:`, para o modelo corrigir o próximo passo.
+- **O write_test recebe o conteúdo dos arquivos lidos no locate** (até 60.000 caracteres), além do
+  resumo. Alternativa: só o resumo. Motivo: o maior risco é o teste importar nomes que não existem,
+  e o código real evita isso.
+- **O write_test pede um bloco ```python**, não JSON. Motivo: código dentro de JSON precisa de
+  escapes e erra mais. Se não houver bloco, a resposta inteira é tratada como código.
+- **Só a última tentativa e a última reflexão vão para a próxima tentativa.** Alternativa: o
+  histórico inteiro. Motivo: prompt menor, e a última reflexão já resume o que mudar.
+- **O código do teste fica no estado durante o grafo.** O run_test cria uma cópia temporária nova a
+  cada tentativa, grava o teste lá e roda `python -m pytest -p no:cacheprovider --tb=auto
+  tests/test_repro_<id>.py`. O `--tb=auto` garante o formato que o judge lê, mesmo que o projeto
+  configure outro, e o `PYTEST_ADDOPTS` do ambiente é ignorado.
+- **A cópia não inclui `.git`, `.venv` e caches**, e copia links simbólicos como links.
+- **O teste roda com o mesmo Python do agente** (`sys.executable`), configurável em
+  `AgentConfig.python_executable`. Motivo: o projeto de exemplo não tem dependências. Um projeto
+  real precisa apontar para o Python do próprio ambiente.
+- **A tentativa guarda só os últimos 8.000 caracteres da saída do pytest.** O judge recebe a saída
+  inteira, e o reflect recebe o final, onde está o resumo das falhas.
+- **O nome do arquivo de teste vem de `repro_test_path`**, e não `test_file_path`. Motivo: o pytest
+  coleta como teste qualquer função importada que comece com `test_`.

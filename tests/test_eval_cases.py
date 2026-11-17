@@ -14,18 +14,14 @@ For each case in evals/cases/<id>:
 The reference tests live here, not in evals/cases, so the agent never sees them.
 """
 
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from conftest import CASES_DIR, apply_patch, copy_fixture
 
 from repro_agent.judge import Outcome, PytestRun, judge
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = REPO_ROOT / "evals" / "fixtures" / "pedido"
-CASES_DIR = REPO_ROOT / "evals" / "cases"
 
 REFERENCE_TESTS = {
     "frete_gratis_no_valor_minimo": """\
@@ -73,14 +69,6 @@ def test_empty_cart_costs_nothing():
 }
 
 CASE_IDS = sorted(path.name for path in CASES_DIR.iterdir() if path.is_dir())
-
-
-def copy_fixture(destination: Path) -> Path:
-    return shutil.copytree(FIXTURE, destination, ignore=shutil.ignore_patterns("__pycache__"))
-
-
-def apply_patch(project: Path, patch: Path) -> None:
-    subprocess.run(["git", "apply", str(patch)], cwd=project, check=True, capture_output=True)
 
 
 def run_pytest(project: Path, *args: str) -> PytestRun:
