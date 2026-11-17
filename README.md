@@ -1,18 +1,189 @@
 # repro-agent
 
-Agente de IA que transforma um relato de bug em um teste pytest que reproduz o bug, com uma suíte de avaliação que mede o quanto ele acerta.
+Agente de IA que transforma um relato de bug em um teste pytest que reproduz o bug, e uma suíte de
+avaliação que mede, com números, o quanto ele acerta.
 
-Projeto em construção. A especificação está em [SPEC.md](SPEC.md).
+## O problema
 
-## Como verificar
+Relatos de bug chegam em linguagem natural e muitas vezes são vagos. O primeiro passo para
+corrigir um bug é reproduzi-lo com um teste que falha, e esse passo costuma ser manual, lento e
+depender de quem conhece o código.
 
-Requer [uv](https://docs.astral.sh/uv/) e `make`.
+O repro-agent recebe o texto do relato e a pasta de um projeto Python com pytest, e devolve:
+
+- um arquivo `tests/test_repro_<id>.py` que falha no código com bug, pela razão certa;
+- um relatório JSON com status, tentativas, tokens, custo estimado e tempo.
+
+Para saber se o agente é confiável, e não só se "parece funcionar", o projeto traz uma suíte de
+avaliação com bugs conhecidos. Um teste só conta como reprodução válida se for **fail-to-pass**:
+falha na versão com bug e passa na versão correta.
+
+A especificação completa está em [SPEC.md](SPEC.md).
+
+## Como funciona
+
+O agente é um grafo em [LangGraph](https://github.com/langchain-ai/langgraph):
+
+```mermaid
+flowchart TD
+    start([início]) --> understand
+    understand --> locate
+    locate --> write_test
+    write_test --> run_test
+    run_test --> judge
+    judge -->|reproduziu ou acabaram as 3 tentativas| fim([fim])
+    judge -->|falhou pela razão errada| reflect
+    reflect --> write_test
+```
+
+| Nó | Usa LLM | O que faz |
+| --- | --- | --- |
+| `understand` | sim | Lê o relato e produz uma análise estruturada (Pydantic): comportamento esperado e observado, gatilho, módulos suspeitos e, quando o próprio bug é uma exceção, o nome dela. |
+| `locate` | sim | Loop ReAct de até 8 passos com ferramentas somente leitura (listar, ler e buscar), presas à pasta do projeto. |
+| `write_test` | sim | Escreve o teste, a partir do relato, da análise, do resumo do `locate`, do código lido e, se houver, da tentativa anterior com a reflexão. |
+| `run_test` | não | Roda só esse teste com pytest em subprocesso, numa cópia temporária do projeto, com timeout de 60 s. |
+| `judge` | não | Decide de forma determinística: reproduziu (falhou com `AssertionError`, ou com a exceção que o relato descreve como bug) ou falhou pela razão errada (passou, erro de import, de sintaxe, de coleta, fixture inexistente, timeout, exceção inesperada). |
+| `reflect` | sim | Explica o que deu errado, para a próxima tentativa do `write_test`. |
+
+O estado do grafo guarda o relato, a análise, os arquivos lidos, o código e a saída do pytest de
+cada tentativa, as reflexões e a contagem de tokens por nó.
+
+### Estrutura do repositório
+
+```
+src/repro_agent/
+    llm.py            interface ChatModel, provedores Gemini e DeepSeek, configuração
+    fake_llm.py       modelo falso roteirizado, usado nos testes
+    tools.py          ferramentas de leitura do locate
+    judge.py          judge determinístico
+    state.py          estado do grafo e configuração do agente
+    nodes/            um arquivo por nó
+    prompts/          prompts de cada nó, em arquivos .md
+    graph.py          montagem do grafo e função reproduce()
+    report.py         relatório JSON de uma execução
+    evaluation.py     runner da suíte de avaliação
+    cli.py            comandos repro run e repro eval
+tests/                testes do próprio projeto (sem chave de API)
+evals/
+    fixtures/pedido/  projeto alvo de exemplo, na versão correta
+    cases/<id>/       issue.md (relato) e bug.patch (introduz o bug)
+    results/          resultados das avaliações
+    run.py            atalho para repro eval
+```
+
+## Como rodar
+
+Requer [uv](https://docs.astral.sh/uv/), `git` e `make`. O uv instala o Python 3.12 se precisar.
+
+```bash
+uv sync
+```
+
+### Configurar o provedor
+
+Copie o exemplo e preencha a chave do provedor escolhido:
+
+```bash
+cp .env.example .env
+```
+
+| Variável | Obrigatória | Exemplo |
+| --- | --- | --- |
+| `REPRO_PROVIDER` | sim | `gemini` ou `deepseek` |
+| `REPRO_MODEL` | sim | `gemini-2.5-flash`, `deepseek-chat` |
+| `GEMINI_API_KEY` ou `DEEPSEEK_API_KEY` | sim, a do provedor escolhido | |
+| `REPRO_LLM_TIMEOUT` | não | `60` (segundos por chamada) |
+| `REPRO_PRICE_INPUT_PER_MTOK` e `REPRO_PRICE_OUTPUT_PER_MTOK` | não | preço em dólares por milhão de tokens, para estimar o custo |
+
+A chave do Gemini é criada no [Google AI Studio](https://aistudio.google.com/apikey). A do
+DeepSeek, na [plataforma da DeepSeek](https://platform.deepseek.com/api_keys). O `.env` está no
+`.gitignore` e nunca deve ir para o repositório.
+
+### Reproduzir um bug
+
+```bash
+uv run repro run --repo caminho/do/projeto --issue relato.md
+```
+
+O relatório JSON sai na saída padrão (e em `--report arquivo.json`, se passar a opção). Se o bug
+for reproduzido, o teste é gravado em `tests/test_repro_<id>.py` dentro do projeto. Opções úteis:
+`--model`, `--provider`, `--test-id`, `--max-attempts`, `--no-write` e `--python` (o Python que
+roda o teste, quando o projeto tem dependências próprias).
+
+Códigos de saída: 0 reproduziu, 1 não reproduziu, 2 configuração inválida, 3 erro na execução.
+
+### Rodar a avaliação
+
+```bash
+uv run repro eval
+```
+
+ou, para escolher modelo e casos:
+
+```bash
+uv run python evals/run.py --model gemini-2.5-flash --cases centavo_a_mais,cupom_acima_de_100
+```
+
+A tabela sai na tela e fica salva em `evals/results/<data>_<modelo>.md`, junto com o JSON
+completo. A avaliação chama o LLM de verdade e **não** roda no CI.
+
+### Verificar o projeto
 
 ```bash
 make verify
 ```
 
-Esse comando roda o ruff (lint e formatação), o mypy e a suíte pytest.
+Roda o ruff (lint e formatação), o mypy e a suíte pytest. Os testes usam o modelo falso e não
+precisam de chave nem de rede. O CI roda o mesmo comando a cada push.
+
+## Suíte de avaliação
+
+O projeto alvo `evals/fixtures/pedido` calcula pedidos de delivery: subtotal, cupom percentual e
+de valor fixo, taxa de entrega com frete grátis a partir de R$ 100,00, arredondamento em centavos
+e validação de quantidade. Cada caso introduz um bug com um patch:
+
+| Caso | Bug | Relato |
+| --- | --- | --- |
+| `frete_gratis_no_valor_minimo` | `>=` virou `>` no frete grátis | claro |
+| `desconto_maior_que_o_esperado` | cupom aplicado sobre subtotal mais taxa de entrega | vago |
+| `centavo_a_mais` | desconto percentual calculado com `float` | vago |
+| `cupom_acima_de_100` | cupom percentual acima de 100% aceito | claro |
+| `carrinho_vazio_cobra_taxa` | carrinho vazio cobra a taxa de entrega | claro |
+
+Os testes do próprio `pedido` continuam passando com cada bug, como acontece com bugs reais. O
+teste `tests/test_eval_cases.py` garante que cada patch aplica e que cada caso tem solução: um
+teste de referência, que o agente nunca vê, é fail-to-pass em todos.
+
+## Resultados
+
+Ainda sem resultados com modelo real. Cada rodada de `repro eval` gera uma tabela em
+`evals/results/`, e o resumo entra aqui.
+
+| Modelo | Data | Reprodução válida | Média de tentativas | Tokens (entrada / saída) | Custo (US$) |
+| --- | --- | --- | --- | --- | --- |
+| | | | | | |
+
+## Segurança e limitações
+
+> **Atenção:** o teste gerado é código escrito por um LLM e executado na sua máquina, com as suas
+> permissões. O agente roda o teste numa cópia temporária do projeto e nunca altera outros
+> arquivos, mas isso não é um sandbox: o código do teste pode acessar a rede e o sistema de
+> arquivos. Use em projetos e relatos em que você confia. Rodar o teste dentro de um container
+> Docker é o próximo passo planejado.
+
+Outras limitações conhecidas:
+
+- Só projetos Python com pytest.
+- O teste roda com o Python do próprio agente, a não ser que se passe `--python`. O projeto
+  alvo precisa ser importável por esse Python.
+- O judge lê o texto da saída do pytest no formato de traceback padrão. Plugins que mudem esse
+  formato podem confundir a classificação.
+- As ferramentas do `locate` leem só texto, com limites de tamanho, e o `locate` tem 8 passos.
+- A temperatura dos modelos não é configurada, então o resultado varia entre rodadas. Com 5 casos,
+  cada caso vale 20 pontos percentuais na taxa de reprodução.
+- Se o provedor falhar no meio de uma execução, os tokens gastos até ali não entram no relatório.
+- As docstrings do projeto `pedido` descrevem o comportamento correto, o que pode facilitar os
+  casos em relação a um projeto real.
 
 ## Decisões de projeto
 
