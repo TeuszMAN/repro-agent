@@ -17,6 +17,8 @@ A especificação completa está em [SPEC.md](SPEC.md).
 - Prefira código simples e fácil de revisar. Funções pequenas, sem abstrações antecipadas.
 - Todo código novo em `src/repro_agent/` tem teste em `tests/`.
 - Anote tipos nas funções públicas.
+- Decisões técnicas que a SPEC não define vão para a seção "Decisões de projeto" do README,
+  em tom neutro: a decisão, a alternativa considerada e o motivo.
 
 ## Estrutura
 
