@@ -58,6 +58,15 @@ def next_step(state: ReproState, max_attempts: int) -> Literal["reflect", "end"]
     return "reflect"
 
 
+def recursion_limit(max_attempts: int) -> int:
+    """Upper bound of node runs for one invocation, passed to LangGraph explicitly.
+
+    One run needs understand + locate, then write_test, run_test, judge (and reflect)
+    per attempt. A tight explicit bound stops a routing bug from looping for a long time.
+    """
+    return 2 + 4 * max_attempts + 5  # 5 to spare
+
+
 @dataclass(frozen=True)
 class ReproResult:
     state: ReproState
@@ -87,5 +96,8 @@ def reproduce(
     """Runs the whole graph once. Never writes to `repo`."""
     start = time.monotonic()
     graph = build_graph(llm, config)
-    final_state = graph.invoke(initial_state(issue, str(repo.resolve()), test_id))
+    final_state = graph.invoke(
+        initial_state(issue, str(repo.resolve()), test_id),
+        {"recursion_limit": recursion_limit(config.max_attempts)},
+    )
     return ReproResult(cast(ReproState, final_state), time.monotonic() - start)

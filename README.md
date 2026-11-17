@@ -343,6 +343,10 @@ considerada e o motivo.
 - **"Máximo de 3 tentativas no total" conta as execuções de write_test.** Depois da terceira não
   há reflexão, porque ela não seria usada.
 - **O grafo nunca grava no projeto alvo.** Quem decide gravar o teste final é a CLI.
+- **Limite explícito de passos do LangGraph**, calculado a partir de `max_attempts`
+  (`2 + 4 × tentativas + 5`). Alternativa: o padrão da biblioteca, que nesta versão é 10007.
+  Motivo: se um erro de roteamento criar um ciclo, o grafo para logo, em vez de rodar milhares de
+  vezes chamando o LLM.
 
 ### CLI e relatório (`cli.py` e `report.py`)
 

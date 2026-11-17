@@ -98,3 +98,19 @@ def test_max_attempts_is_configurable(buggy_project: Path) -> None:
     result = reproduce(ISSUE, buggy_project, "frete", fake, AgentConfig(max_attempts=1))
 
     assert [a.outcome for a in result.attempts] == [Outcome.PASSED]
+
+
+def test_recursion_limit_fits_many_attempts(buggy_project: Path) -> None:
+    """7 attempts need 2 + 7 * 3 + 6 = 29 node runs, all within the explicit limit."""
+    fake = FakeModel(
+        {
+            "understand": [ANALYSIS],
+            "locate": LOCATE_STEPS,
+            "write_test": [PASSING_TEST] * 7,
+            "reflect": ["try again"] * 6,
+        }
+    )
+
+    result = reproduce(ISSUE, buggy_project, "frete", fake, AgentConfig(max_attempts=7))
+
+    assert len(result.attempts) == 7
